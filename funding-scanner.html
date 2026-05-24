@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Δ-NEUTRAL DESK — Hyperliquid Funding Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c0a;--panel:#101410;--panel-2:#0d100d;--line:#1d241d;--line-2:#2a342a;
+    --text:#d7e0d4;--muted:#6f7d6c;--muted-2:#4a564a;
+    --acid:#b8ff3a;--acid-dim:#7fb028;--green:#46e08a;--red:#ff5a52;--amber:#ffc04d;
+    --mono:'JetBrains Mono',monospace;--sans:'Archivo',sans-serif;--display:'Syne',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.4;min-height:100vh;
+    background-image:linear-gradient(rgba(184,255,58,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(184,255,58,0.018) 1px,transparent 1px),radial-gradient(ellipse at 80% -10%,rgba(184,255,58,0.07),transparent 55%);
+    background-size:42px 42px,42px 42px,100% 100%;}
+  .wrap{max-width:1480px;margin:0 auto;padding:26px 22px 60px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:18px;border-bottom:1px solid var(--line-2);padding-bottom:18px;margin-bottom:22px}
+  .brand{display:flex;flex-direction:column;gap:4px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.32em;color:var(--acid-dim);text-transform:uppercase}
+  h1{font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:-.02em;line-height:1;display:flex;align-items:center;gap:12px}
+  h1 .delta{color:var(--acid);font-size:38px}
+  .tagline{font-family:var(--mono);font-size:12px;color:var(--muted);max-width:460px;margin-top:6px}
+  .status{display:flex;flex-direction:column;align-items:flex-end;gap:7px;font-family:var(--mono);font-size:11px}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:7px;background:var(--muted-2)}
+  .dot.live{background:var(--green);box-shadow:0 0 9px var(--green);animation:pulse 1.8s infinite}
+  .dot.err{background:var(--red);box-shadow:0 0 9px var(--red)}
+  .dot.demo{background:var(--amber);box-shadow:0 0 9px var(--amber)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .status .clock{color:var(--muted)}
+
+  /* VERDICT */
+  .verdict{border-radius:13px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:22px;
+    border:1px solid var(--line-2);background:var(--panel);position:relative;overflow:hidden}
+  .verdict::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--muted-2)}
+  .verdict.good::before{background:var(--green)} .verdict.ok::before{background:var(--amber)} .verdict.none::before{background:var(--muted-2)}
+  .verdict.good{background:radial-gradient(ellipse at 0% 0%,rgba(70,224,138,.10),var(--panel) 60%)}
+  .verdict.ok{background:radial-gradient(ellipse at 0% 0%,rgba(255,192,77,.09),var(--panel) 60%)}
+  .vbig{font-family:var(--display);font-weight:800;font-size:54px;line-height:.9;letter-spacing:-.03em}
+  .verdict.good .vbig{color:var(--green)} .verdict.ok .vbig{color:var(--amber)} .verdict.none .vbig{color:var(--muted)}
+  .vtext{display:flex;flex-direction:column;gap:4px}
+  .vtitle{font-family:var(--display);font-weight:700;font-size:21px}
+  .vsub{font-family:var(--mono);font-size:12.5px;color:var(--muted);line-height:1.5}
+
+  /* PICK CARDS */
+  .picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:13px;margin-bottom:14px}
+  .pick{background:var(--panel);border:1px solid var(--line-2);border-radius:12px;padding:16px 17px;position:relative;transition:.15s}
+  .pick:hover{border-color:var(--acid-dim);transform:translateY(-2px)}
+  .pick .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .pick .name{font-family:var(--display);font-weight:800;font-size:22px;display:flex;align-items:center;gap:8px}
+  .grade{font-family:var(--mono);font-weight:700;font-size:13px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+  .grade.A{background:rgba(70,224,138,.16);color:var(--green);border:1px solid rgba(70,224,138,.4)}
+  .grade.B{background:rgba(184,255,58,.14);color:var(--acid);border:1px solid rgba(184,255,58,.36)}
+  .grade.C{background:rgba(255,192,77,.13);color:var(--amber);border:1px solid rgba(255,192,77,.34)}
+  .grade.D{background:rgba(255,90,82,.12);color:var(--red);border:1px solid rgba(255,90,82,.32)}
+  .pick .yield{font-family:var(--mono);font-weight:700;font-size:30px;letter-spacing:-.02em}
+  .pick .yield small{font-size:13px;color:var(--muted);font-weight:400;letter-spacing:0}
+  .pick .desc{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.55;margin:9px 0 12px;min-height:51px}
+  .pick .meta{display:flex;gap:14px;font-family:var(--mono);font-size:11px;color:var(--muted-2);border-top:1px solid var(--line);padding-top:10px}
+  .pick .meta b{color:var(--text);font-weight:500}
+  .badge{font-size:9px;font-family:var(--mono);letter-spacing:.06em;padding:2px 5px;border-radius:4px}
+  .badge.spot{background:rgba(70,224,138,.12);color:var(--green);border:1px solid rgba(70,224,138,.3)}
+  .badge.stable{background:rgba(184,255,58,.13);color:var(--acid);border:1px solid rgba(184,255,58,.32)}
+  .badge.spike{background:rgba(255,192,77,.13);color:var(--amber);border:1px solid rgba(255,192,77,.32)}
+  .pos{color:var(--green)} .neg{color:var(--red)} .muted{color:var(--muted-2)}
+
+  .sectitle{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:24px 0 12px;display:flex;align-items:center;gap:10px}
+  .sectitle::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .controls{background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:14px 16px;display:flex;flex-wrap:wrap;gap:15px 22px;align-items:flex-end;margin-bottom:14px}
+  .ctrl{display:flex;flex-direction:column;gap:6px}
+  .ctrl label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .ctrl input{background:var(--bg);border:1px solid var(--line-2);color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:7px;outline:none;width:118px}
+  .ctrl.search input{width:155px}
+  .ctrl input:focus{border-color:var(--acid-dim);box-shadow:0 0 0 2px rgba(184,255,58,.12)}
+  .toggles{display:flex;flex-direction:column;gap:9px}
+  .chk{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;cursor:pointer;user-select:none}
+  .chk input{appearance:none;width:16px;height:16px;border:1px solid var(--line-2);border-radius:4px;background:var(--bg);cursor:pointer;position:relative}
+  .chk input:checked{background:var(--acid);border-color:var(--acid)}
+  .chk input:checked::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#0a0c0a;font-weight:700}
+  .spacer{flex:1}.btns{display:flex;gap:9px}
+  button{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.06em;padding:10px 15px;border-radius:7px;cursor:pointer;text-transform:uppercase;transition:.15s;border:1px solid var(--line-2);background:var(--panel);color:var(--text)}
+  button.acid{background:var(--acid);color:#0a0c0a;border:none}
+  button.acid:hover{box-shadow:0 0 18px rgba(184,255,58,.45)}
+  button.ghost:hover{border-color:var(--acid-dim);color:var(--acid)}
+  .banner{display:none;border-radius:9px;padding:13px 16px;margin-bottom:16px;font-family:var(--mono);font-size:12.5px;line-height:1.6}
+  .banner.err{background:rgba(255,90,82,.08);border:1px solid rgba(255,90,82,.35);color:#ffb3ae}
+  .banner.info{background:rgba(255,192,77,.07);border:1px solid rgba(255,192,77,.3);color:#ffd98a}
+  .banner b{color:var(--amber)} .banner.err b{color:var(--red)} .banner code{background:rgba(0,0,0,.4);padding:1px 6px;border-radius:4px;color:var(--amber)}
+  .tablecard{background:var(--panel-2);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .tablescroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:1240px}
+  thead th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:right;padding:12px 13px;background:var(--panel);border-bottom:1px solid var(--line-2);position:sticky;top:0;cursor:pointer;white-space:nowrap;user-select:none}
+  thead th:first-child,thead th:nth-child(2){text-align:left}
+  thead th.grp{color:var(--acid-dim)}
+  thead th:hover{color:var(--acid)} thead th .arr{color:var(--acid);font-size:9px;margin-left:3px}
+  tbody td{font-family:var(--mono);font-size:13px;text-align:right;padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody tr{transition:background .12s} tbody tr:hover{background:rgba(184,255,58,.04)}
+  tbody tr:last-child td{border-bottom:none}
+  td.scorecell{text-align:left}
+  .sc{font-family:var(--mono);font-weight:700;font-size:12px;padding:3px 8px;border-radius:6px;display:inline-block;min-width:34px;text-align:center}
+  .sc.A{background:rgba(70,224,138,.16);color:var(--green)} .sc.B{background:rgba(184,255,58,.14);color:var(--acid)}
+  .sc.C{background:rgba(255,192,77,.13);color:var(--amber)} .sc.D{background:rgba(255,90,82,.12);color:var(--red)}
+  .asset{text-align:left;display:flex;align-items:center;gap:8px}
+  .asset .nm{font-weight:700;font-size:14px} .lev{color:var(--muted-2);font-size:11px}
+  .empty{padding:46px;text-align:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+  footer{margin-top:24px;font-family:var(--mono);font-size:11px;color:var(--muted-2);line-height:1.7;border-top:1px solid var(--line);padding-top:16px}
+  footer b{color:var(--muted)}
+  .loader{display:inline-block;width:13px;height:13px;border:2px solid var(--line-2);border-top-color:var(--acid);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media(max-width:760px){h1{font-size:26px}.verdict{gap:16px;padding:16px}.vbig{font-size:42px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="kicker">Hyperliquid · Funding Opportunity Scanner</span>
+      <h1><span class="delta">Δ</span>NEUTRAL DESK</h1>
+      <p class="tagline">Buy spot · short perp · encaisse le funding. Tu regardes le verdict, tu regardes les cartes. C'est tout.</p>
+    </div>
+    <div class="status">
+      <div><span class="dot" id="dot"></span><span id="statusText">Initialisation…</span></div>
+      <div class="clock" id="updated">—</div>
+    </div>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <!-- VERDICT : la réponse en un coup d'œil -->
+  <div class="verdict none" id="verdict">
+    <div class="vbig" id="vBig">…</div>
+    <div class="vtext">
+      <div class="vtitle" id="vTitle">Analyse en cours</div>
+      <div class="vsub" id="vSub">Chargement des données de funding…</div>
+    </div>
+  </div>
+
+  <!-- CARTES : les meilleures opportunités, notées -->
+  <div class="picks" id="picks"></div>
+
+  <div class="sectitle">Tableau complet — filtrer &amp; explorer</div>
+
+  <div class="controls">
+    <div class="ctrl search"><label>Recherche</label><input type="text" id="fSearch" placeholder="BTC, HYPE…"></div>
+    <div class="ctrl"><label>OI min ($)</label><input type="number" id="fOi" value="1000000" step="500000"></div>
+    <div class="ctrl"><label>Vol 24h min ($)</label><input type="number" id="fVol" value="1000000" step="500000"></div>
+    <div class="ctrl"><label>APR 7j min (%)</label><input type="number" id="fApr" value="0" step="1"></div>
+    <div class="toggles">
+      <label class="chk"><input type="checkbox" id="fStable"> Persistant uniquement (24h+7j+30j &gt; 0)</label>
+      <label class="chk"><input type="checkbox" id="fSpot"> Dispo en spot sur HL</label>
+    </div>
+    <div class="spacer"></div>
+    <div class="btns">
+      <button class="ghost" id="btnDemo">Démo</button>
+      <button class="acid" id="btnRefresh">↻ Recharger</button>
+    </div>
+  </div>
+
+  <div class="tablecard"><div class="tablescroll">
+    <table>
+      <thead><tr>
+        <th data-k="score">Note</th>
+        <th data-k="name">Asset</th>
+        <th data-k="mark">Mark</th>
+        <th data-k="apr">Now APR</th>
+        <th class="grp" data-k="a_h10">10h</th>
+        <th class="grp" data-k="a_h24">24h</th>
+        <th class="grp" data-k="a_h72">72h</th>
+        <th class="grp" data-k="a_d7">7j</th>
+        <th class="grp" data-k="a_d15">15j</th>
+        <th class="grp" data-k="a_d30">30j</th>
+        <th data-k="oi">OI</th>
+        <th data-k="vol">Vol 24h</th>
+      </tr></thead>
+      <tbody id="tbody"><tr><td colspan="12" class="empty"><span class="loader"></span> &nbsp;Chargement de funding-data.json…</td></tr></tbody>
+    </table>
+  </div></div>
+
+  <footer>
+    <b>Comment lire :</b> le <b>verdict</b> en haut te dit s'il y a des coups solides aujourd'hui. Les <b>cartes</b> sont les meilleures opportunités, notées A→D. La <b>note</b> combine : rendement fiable (moyenne 7j/30j), persistance (funding positif sur toutes les fenêtres), liquidité (OI/volume) et bonus si dispo en spot.<br>
+    Badge <span class="badge stable" style="display:inline">STABLE</span> = funding + sur 24h, 7j et 30j. <span class="badge spike" style="display:inline">PIC</span> = funding court terme ≫ long terme, risque de retomber. <span class="badge spot" style="display:inline">SPOT</span> = deux jambes dans le même compte (marge unifiée).<br>
+    <b>Risque :</b> le funding n'est pas garanti, surveille le flip négatif et garde un buffer de marge. Outil de screening, pas un conseil financier. Source : <code>funding-data.json</code> (GitHub Action, maj horaire).
+  </footer>
+</div>
+
+<script>
+const DATA_URL='./funding-data.json';
+let RAW=[],META={};
+let sortKey='score',sortDir=-1;
+const $=id=>document.getElementById(id);
+const fmtUsd=n=>{if(!isFinite(n))return '—';const a=Math.abs(n);
+  if(a>=1e9)return '$'+(n/1e9).toFixed(2)+'B';if(a>=1e6)return '$'+(n/1e6).toFixed(1)+'M';
+  if(a>=1e3)return '$'+(n/1e3).toFixed(0)+'K';return '$'+n.toFixed(0);};
+const fmtPx=n=>{if(!isFinite(n))return '—';if(n>=1000)return n.toLocaleString('en-US',{maximumFractionDigits:0});
+  if(n>=1)return n.toFixed(3);return n.toPrecision(4);};
+const pct=v=>v==null?'<span class="muted">—</span>':`<span class="${v>0?'pos':v<0?'neg':'muted'}">${v>=0?'+':''}${v.toFixed(0)}%</span>`;
+
+function getVal(r,k){
+  if(k==='score')return r._sc?r._sc.score:0;
+  if(k.startsWith('a_'))return (r.avg&&r.avg[k.slice(2)]!=null)?r.avg[k.slice(2)]:null;
+  return r[k];
+}
+
+// ---- SCORING ----
+function isStable(r){const a=r.avg||{};return a.h24>0&&a.d7>0&&a.d30>0;}
+function score(r){
+  const a=r.avg||{};const d7=a.d7,d30=a.d30;
+  if(d7==null||d30==null)return {score:0,grade:'D',stable:false,spike:false,reliable:0,insufficient:true};
+  const stable=isStable(r);
+  const reliable=Math.min(d7,d30);                       // rendement conservateur
+  const yieldPts=Math.max(0,Math.min(50,(reliable/40)*50));
+  const wins=['h10','h24','h72','d7','d15','d30'].map(k=>a[k]).filter(v=>v!=null);
+  const posRatio=wins.length?wins.filter(v=>v>0).length/wins.length:0;
+  const persistPts=posRatio*30;
+  const liq=Math.max(0,Math.min(1,(Math.log10(Math.max(r.oi,1))-6)/1.5)); // 1M→0, ~32M→1
+  const liqPts=liq*15;
+  const spotPts=r.hasSpot?5:0;
+  let s=Math.round(yieldPts+persistPts+liqPts+spotPts);
+  s=Math.max(0,Math.min(100,s));
+  const spike=(a.h10!=null&&d30>0&&a.h10>d30*1.6);
+  const grade=s>=70?'A':s>=55?'B':s>=40?'C':'D';
+  return {score:s,grade,stable,spike,reliable};
+}
+function summary(r){
+  const s=r._sc,a=r.avg||{};
+  const y=s.reliable>=30?'Funding élevé':s.reliable>=15?'Funding correct':s.reliable>0?'Funding faible':'Funding négatif';
+  const p=s.stable?'stable sur 30j':s.spike?'pic récent (peut retomber)':'instable selon les fenêtres';
+  const l=r.oi>=20e6?'très liquide':r.oi>=5e6?'liquide':'liquidité limitée';
+  const sp=r.hasSpot?'spot dispo':'perp only';
+  return `${y} (${a.d7!=null?(a.d7>=0?'+':'')+a.d7.toFixed(0)+'%/an 7j':'—'}), ${p}. ${l}, ${sp}.`;
+}
+
+async function loadData(){
+  const btn=$('btnRefresh');btn.disabled=true;btn.textContent='↻ …';setStatus('loading');$('banner').style.display='none';
+  try{
+    const res=await fetch(DATA_URL,{cache:'no-store'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    ingest(await res.json(),false);
+  }catch(err){
+    setStatus('err');
+    $('banner').className='banner err';$('banner').style.display='block';
+    $('banner').innerHTML='<b>funding-data.json introuvable.</b> Normal si le GitHub Action n\'a pas encore tourné ou si tu ouvres le HTML seul. '+
+      'Lance le workflow, ou clique <b>« Démo »</b> pour voir l\'interface. <br>Détail : '+(err.message||err);
+    setVerdict('none','—','Pas de données','Branche le funding-data.json ou charge la démo.');
+    $('picks').innerHTML='';$('tbody').innerHTML='<tr><td colspan="12" class="empty">Pas de données.</td></tr>';
+  }finally{btn.disabled=false;btn.textContent='↻ Recharger';}
+}
+function ingest(j,demo){
+  RAW=(j.assets||[]).map(r=>({...r,_sc:score(r)}));META=j;
+  setStatus(demo?'demo':'live');
+  $('updated').textContent=(demo?'DÉMO · ':'Maj ')+(j.updated?new Date(j.updated).toLocaleString('fr-FR'):'—');
+  render();
+}
+function setStatus(s){const d=$('dot'),t=$('statusText');
+  d.className='dot'+(s==='live'?' live':s==='err'?' err':s==='demo'?' demo':'');
+  t.textContent=s==='live'?'En direct':s==='err'?'Erreur':s==='demo'?'Données démo':'Chargement…';}
+function setVerdict(kind,big,title,sub){
+  $('verdict').className='verdict '+kind;$('vBig').textContent=big;$('vTitle').textContent=title;$('vSub').innerHTML=sub;}
+function filters(){return{q:$('fSearch').value.trim().toUpperCase(),oi:parseFloat($('fOi').value)||0,
+  vol:parseFloat($('fVol').value)||0,apr:parseFloat($('fApr').value)||-1e9,
+  stable:$('fStable').checked,spot:$('fSpot').checked};}
+
+function render(){
+  const f=filters();
+  // base liquidité (pour verdict + cartes) : OI/vol/recherche/spot, mais pas stable/apr
+  const liquid=RAW.filter(r=>{
+    if(f.q&&!r.name.toUpperCase().includes(f.q))return false;
+    if((r.oi||0)<f.oi)return false; if((r.vol||0)<f.vol)return false;
+    if(f.spot&&!r.hasSpot)return false; return true;});
+
+  const ranked=[...liquid].sort((a,b)=>b._sc.score-a._sc.score);
+  const solid=liquid.filter(r=>r._sc.score>=70&&r._sc.stable);
+  const okish=liquid.filter(r=>r._sc.score>=55&&r._sc.score<70);
+
+  // VERDICT
+  if(solid.length){
+    setVerdict('good',solid.length,
+      `${solid.length} opportunité${solid.length>1?'s':''} solide${solid.length>1?'s':''}`,
+      `Funding positif et persistant, liquide. Les cartes ci-dessous, notées A→D, sont triées par fiabilité.`);
+  }else if(okish.length){
+    setVerdict('ok',okish.length,
+      `${okish.length} à surveiller`,
+      `Pas de coup vraiment solide aujourd'hui, mais ${okish.length} option${okish.length>1?'s':''} correcte${okish.length>1?'s':''} (note B). À regarder de près avant d'entrer.`);
+  }else{
+    setVerdict('none','0','Rien de net en ce moment',
+      `Aucun funding à la fois rémunérateur et stable parmi les assets liquides. Reviens plus tard, ou baisse les seuils de liquidité.`);
+  }
+
+  // CARTES (top 4 par note)
+  const picks=ranked.slice(0,4);
+  $('picks').innerHTML=picks.map(r=>{const s=r._sc;
+    return `<div class="pick">
+      <div class="top">
+        <div class="name">${r.name}<span class="lev" style="font-size:11px">${r.lev||0}×</span></div>
+        <div class="grade ${s.grade}">${s.grade}</div>
+      </div>
+      <div class="yield ${s.reliable>0?'pos':'neg'}">${s.reliable>=0?'+':''}${s.reliable.toFixed(0)}%<small> /an fiable</small></div>
+      <div style="margin-top:6px">${s.stable?'<span class="badge stable">STABLE</span> ':''}${s.spike?'<span class="badge spike">PIC</span> ':''}${r.hasSpot?'<span class="badge spot">SPOT</span>':''}</div>
+      <div class="desc">${summary(r)}</div>
+      <div class="meta"><span>OI <b>${fmtUsd(r.oi)}</b></span><span>Vol <b>${fmtUsd(r.vol)}</b></span><span>30j <b class="${(r.avg&&r.avg.d30>0)?'pos':'neg'}">${r.avg&&r.avg.d30!=null?(r.avg.d30>=0?'+':'')+r.avg.d30.toFixed(0)+'%':'—'}</b></span></div>
+    </div>`;}).join('')||'<div class="pick"><div class="desc">Aucun asset ne passe les filtres de liquidité.</div></div>';
+
+  // TABLEAU (tous les filtres)
+  let rows=liquid.filter(r=>{
+    const d7=(r.avg&&r.avg.d7!=null)?r.avg.d7:-1e9; if(d7<f.apr)return false;
+    if(f.stable&&!r._sc.stable)return false; return true;});
+  rows.sort((a,b)=>{if(sortKey==='name')return sortDir*a.name.localeCompare(b.name);
+    const va=getVal(a,sortKey),vb=getVal(b,sortKey);return sortDir*(((va==null?-1e12:va))-((vb==null?-1e12:vb)));});
+
+  document.querySelectorAll('thead th').forEach(th=>{th.querySelector('.arr')?.remove();
+    if(th.dataset.k===sortKey){const sp=document.createElement('span');sp.className='arr';sp.textContent=sortDir<0?'▼':'▲';th.appendChild(sp);}});
+
+  const tb=$('tbody');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="12" class="empty">Aucun asset ne correspond aux filtres.</td></tr>';return;}
+  tb.innerHTML=rows.map(r=>{const a=r.avg||{},s=r._sc,nc=r.apr>0?'pos':r.apr<0?'neg':'muted';
+    return `<tr>
+      <td class="scorecell"><span class="sc ${s.grade}">${s.score}</span></td>
+      <td class="asset"><span class="nm">${r.name}</span>${s.stable?'<span class="badge stable">STABLE</span>':''}${s.spike?'<span class="badge spike">PIC</span>':''}${r.hasSpot?'<span class="badge spot">SPOT</span>':''}<span class="lev">${r.lev||0}×</span></td>
+      <td>${fmtPx(r.mark)}</td>
+      <td class="${nc}" style="font-weight:700">${pct(r.apr)}</td>
+      <td>${pct(a.h10)}</td><td>${pct(a.h24)}</td><td>${pct(a.h72)}</td>
+      <td style="font-weight:700">${pct(a.d7)}</td><td>${pct(a.d15)}</td><td>${pct(a.d30)}</td>
+      <td>${fmtUsd(r.oi)}</td><td>${fmtUsd(r.vol)}</td>
+    </tr>`;}).join('');
+}
+
+const DEMO={updated:new Date().toISOString(),assets:[
+  {name:'HYPE',mark:38.4,lev:5,oi:142e6,vol:310e6,hasSpot:true,fundingNow:0.0041,apr:35.9,avg:{h10:33,h24:31,h72:29,d7:28,d15:26,d30:24}},
+  {name:'FARTCOIN',mark:1.21,lev:5,oi:54e6,vol:190e6,hasSpot:true,fundingNow:0.0055,apr:48.2,avg:{h10:46,h24:42,h72:40,d7:39,d15:37,d30:35}},
+  {name:'kPEPE',mark:0.0084,lev:10,oi:38e6,vol:120e6,hasSpot:false,fundingNow:0.0072,apr:63.1,avg:{h10:58,h24:44,h72:33,d7:21,d15:18,d30:15}},
+  {name:'SUI',mark:2.91,lev:20,oi:48e6,vol:130e6,hasSpot:true,fundingNow:0.0026,apr:22.8,avg:{h10:21,h24:20,h72:19,d7:18,d15:17,d30:16}},
+  {name:'SOL',mark:158.2,lev:20,oi:210e6,vol:640e6,hasSpot:true,fundingNow:0.0021,apr:18.4,avg:{h10:17,h24:16,h72:15,d7:14,d15:13,d30:12}},
+  {name:'BTC',mark:104210,lev:40,oi:980e6,vol:2400e6,hasSpot:true,fundingNow:0.0012,apr:10.5,avg:{h10:11,h24:10,h72:9,d7:9,d15:8,d30:8}},
+  {name:'ETH',mark:3380,lev:25,oi:540e6,vol:1100e6,hasSpot:true,fundingNow:0.0009,apr:7.9,avg:{h10:8,h24:8,h72:7,d7:7,d15:6,d30:6}},
+  {name:'POPCAT',mark:0.62,lev:10,oi:14e6,vol:51e6,hasSpot:false,fundingNow:0.0038,apr:33.3,avg:{h10:31,h24:14,h72:6,d7:3,d15:2,d30:1}},
+  {name:'WIF',mark:1.84,lev:10,oi:22e6,vol:88e6,hasSpot:false,fundingNow:-0.0018,apr:-15.8,avg:{h10:-12,h24:-6,h72:2,d7:5,d15:7,d30:9}},
+  {name:'DOGE',mark:0.21,lev:20,oi:96e6,vol:280e6,hasSpot:true,fundingNow:0.0015,apr:13.1,avg:{h10:13,h24:12,h72:11,d7:11,d15:10,d30:10}},
+  {name:'AERO',mark:0.78,lev:5,oi:9e6,vol:24e6,hasSpot:false,fundingNow:0.0048,apr:42.0,avg:{h10:39,h24:30,h72:24,d7:20,d15:17,d30:14}},
+  {name:'XRP',mark:2.34,lev:20,oi:120e6,vol:340e6,hasSpot:true,fundingNow:0.0007,apr:6.1,avg:{h10:6,h24:6,h72:5,d7:5,d15:5,d30:4}},
+]};
+
+document.querySelectorAll('thead th').forEach(th=>th.addEventListener('click',()=>{
+  const k=th.dataset.k;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=(k==='name')?1:-1;}render();}));
+['fSearch','fOi','fVol','fApr','fStable','fSpot'].forEach(id=>{$(id).addEventListener('input',render);$(id).addEventListener('change',render);});
+$('btnRefresh').addEventListener('click',loadData);
+$('btnDemo').addEventListener('click',()=>{ingest(JSON.parse(JSON.stringify(DEMO)),true);
+  $('banner').className='banner info';$('banner').style.display='block';
+  $('banner').innerHTML='<b>Mode démo</b> — données fictives pour visualiser l\'interface. Branche le vrai <code>funding-data.json</code> puis « Recharger ».';});
+
+loadData();
+</script>
+</body>
+</html>
